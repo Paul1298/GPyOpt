@@ -14,16 +14,16 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../GPyOpt'))
+sys.path.insert(0, os.path.abspath('../MyGPyOpt'))
 print('--------------')
-print(os.path.abspath('../GPyOpt'))
+print(os.path.abspath('../MyGPyOpt'))
 
 
 # -- Project information -----------------------------------------------------
 
-project = 'GPyOpt'
-copyright = '2018, GPyOpt Authors'
-author = 'GPyOpt Authors'
+project = 'MyGPyOpt'
+copyright = '2018, MyGPyOpt Authors'
+author = 'MyGPyOpt Authors'
 
 # The short X.Y version
 version = ''
@@ -132,8 +132,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'GPyOpt.tex', 'GPyOpt Documentation',
-     'GPyOpt Authors', 'manual'),
+    (master_doc, 'MyGPyOpt.tex', 'MyGPyOpt Documentation',
+     'MyGPyOpt Authors', 'manual'),
 ]
 
 
@@ -142,7 +142,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'gpyopt', 'GPyOpt Documentation',
+    (master_doc, 'gpyopt', 'MyGPyOpt Documentation',
      [author], 1)
 ]
 
@@ -153,8 +153,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'GPyOpt', 'GPyOpt Documentation',
-     author, 'GPyOpt', 'One line description of project.',
+    (master_doc, 'MyGPyOpt', 'MyGPyOpt Documentation',
+     author, 'MyGPyOpt', 'One line description of project.',
      'Miscellaneous'),
 ]
 

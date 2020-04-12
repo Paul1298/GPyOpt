@@ -9,8 +9,8 @@ def read(fname):
 
 __version__ = "1.2.6"
 
-packages = find_packages(exclude=("GPyOpt.testing",))
-setup(name = 'GPyOpt',
+packages = find_packages(exclude=("MyGPyOpt.testing",))
+setup(name = 'MyGPyOpt',
       version = __version__,
       author = read('AUTHORS.txt').replace('\n', ', ').replace('-', ''),
       author_email = "j.h.gonzalez@sheffield.ac.uk",
@@ -19,11 +19,11 @@ setup(name = 'GPyOpt',
       long_description_content_type = 'text/markdown',
       license = "BSD 3-clause",
       keywords = "machine-learning gaussian-processes kernels optimization",
-      url = "http://sheffieldml.github.io/GPyOpt/",
+      # url = "http://sheffieldml.github.io/GPyOpt/",
       packages = packages,
-      package_dir = {'GPyOpt': 'GPyOpt'},
+      package_dir = {'MyGPyOpt': 'MyGPyOpt'},
       include_package_data = True,
-      py_modules = ['GPyOpt.__init__'],
+      py_modules = ['MyGPyOpt.__init__'],
       install_requires = ['numpy>=1.7', 'scipy>=0.16', 'GPy>=1.8'],
       extras_require = {'optimizer':['DIRECT','cma','pyDOE','sobol_seq','emcee'],'docs':['matplotlib >=1.3','Sphinx','IPython']},
       classifiers=['License :: OSI Approved :: BSD License',

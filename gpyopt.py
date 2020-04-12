@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-# Copyright (c) 2014, GPyOpt authors (see AUTHORS.txt).
+# Copyright (c) 2014, MyGPyOpt authors (see AUTHORS.txt).
 # Licensed under the BSD 3-clause license (see LICENSE.txt)
 
-from GPyOpt.interface import parser, BODriver, load_objective, OutputEng
+from MyGPyOpt.interface import parser, BODriver, load_objective, OutputEng
 
 if __name__ == '__main__':
     import sys,os

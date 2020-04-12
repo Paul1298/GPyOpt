@@ -1,8 +1,8 @@
-# Copyright (c) 2016, the GPyOpt Authors
+# Copyright (c) 2016, the MyGPyOpt Authors
 # Licensed under the BSD 3-clause license (see LICENSE.txt)
 
 
-from GPyOpt.objective_examples.experiments2d import branin as branin_creator
+from MyGPyOpt.objective_examples.experiments2d import branin as branin_creator
 import numpy as np
 
 f = branin_creator()

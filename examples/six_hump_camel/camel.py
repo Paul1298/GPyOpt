@@ -1,4 +1,4 @@
-# Copyright (c) 2016, the GPyOpt Authors
+# Copyright (c) 2016, the MyGPyOpt Authors
 # Licensed under the BSD 3-clause license (see LICENSE.txt)
 
 import math
