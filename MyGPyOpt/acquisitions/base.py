@@ -51,14 +51,14 @@ class AcquisitionBase(object):
         x_z = x if self.space.model_dimensionality == self.space.objective_dimensionality else self.space.zip_inputs(x)
         return -f_acq_cost*self.space.indicator_constraints(x_z), -df_acq_cost*self.space.indicator_constraints(x_z)
 
-    def optimize(self, duplicate_manager=None):
+    def optimize(self, duplicate_manager=None, x_opt=None):
         """
         Optimizes the acquisition function (uses a flag from the model to use gradients or not).
         """
         if not self.analytical_gradient_acq:
             out = self.optimizer.optimize(f=self.acquisition_function, duplicate_manager=duplicate_manager)
         else:
-            out = self.optimizer.optimize(f=self.acquisition_function, f_df=self.acquisition_function_withGradients, duplicate_manager=duplicate_manager)
+            out = self.optimizer.optimize(f=self.acquisition_function, f_df=self.acquisition_function_withGradients, duplicate_manager=duplicate_manager, x_opt=x_opt)
         return out
 
     def _compute_acq(self,x):

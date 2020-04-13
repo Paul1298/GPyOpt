@@ -44,7 +44,7 @@ class AcquisitionOptimizer(object):
         self.context_manager = ContextManager(space)
 
 
-    def optimize(self, f=None, df=None, f_df=None, duplicate_manager=None):
+    def optimize(self, f=None, df=None, f_df=None, duplicate_manager=None, x_opt=None):
         """
         Optimizes the input function.
 
@@ -67,7 +67,7 @@ class AcquisitionOptimizer(object):
             anchor_points_generator = ThompsonSamplingAnchorPointsGenerator(self.space, sobol_design_type, self.model)
 
         ## -- Select the anchor points (with context)
-        anchor_points = anchor_points_generator.get(duplicate_manager=duplicate_manager, context_manager=self.context_manager)
+        anchor_points = anchor_points_generator.get(duplicate_manager=duplicate_manager, context_manager=self.context_manager, x_opt=x_opt)
 
         ## --- Applying local optimizers at the anchor points and update bounds of the optimizer (according to the context)
         optimized_points = [apply_optimizer(self.optimizer, a, f=f, df=None, f_df=f_df, duplicate_manager=duplicate_manager, context_manager=self.context_manager, space = self.space) for a in anchor_points]

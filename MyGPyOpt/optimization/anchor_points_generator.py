@@ -2,9 +2,11 @@
 # Licensed under the BSD 3-clause license (see LICENSE.txt)
 
 import numpy as np
-from ..experiment_design import initial_design
+
 from ..core.errors import FullyExploredOptimizationDomainError
 from ..core.task.space import Design_space
+from ..experiment_design import initial_design
+
 
 class AnchorPointsGenerator(object):
 
@@ -16,13 +18,14 @@ class AnchorPointsGenerator(object):
     def get_anchor_point_scores(self, X):
         raise NotImplementedError("get_anchor_point_scores is not implemented in the parent class.")
 
-    def get(self, num_anchor=5, duplicate_manager=None, unique=False, context_manager=None):
+    def get(self, num_anchor=5, duplicate_manager=None, unique=False, context_manager=None, x_opt=None):
 
         ## --- We use the context handler to remove duplicates only over the non-context variables
         if context_manager and not self.space._has_bandit():
-            space_configuration_without_context = [self.space.config_space_expanded[idx] for idx in context_manager.nocontext_index_obj]
+            space_configuration_without_context = [self.space.config_space_expanded[idx] for idx in
+                                                   context_manager.nocontext_index_obj]
             space = Design_space(space_configuration_without_context, context_manager.space.constraints)
-            add_context = lambda x : context_manager._expand_vector(x)
+            add_context = lambda x: context_manager._expand_vector(x)
         else:
             space = self.space
             add_context = lambda x: x
@@ -43,24 +46,28 @@ class AnchorPointsGenerator(object):
             is_duplicate = duplicate_manager.is_unzipped_x_duplicate
         else:
             # In absence of duplicate manager, we never detect duplicates
-            is_duplicate = lambda _ : False
+            is_duplicate = lambda _: False
 
         non_duplicate_anchor_point_indexes = [index for index, x in enumerate(X) if not is_duplicate(x)]
 
         if not non_duplicate_anchor_point_indexes:
-            raise FullyExploredOptimizationDomainError("No anchor points could be generated ({} used samples, {} requested anchor points).".format(self.num_samples,num_anchor))
+            raise FullyExploredOptimizationDomainError(
+                "No anchor points could be generated ({} used samples, {} requested anchor points).".format(
+                    self.num_samples, num_anchor))
 
         if len(non_duplicate_anchor_point_indexes) < num_anchor:
             # Since logging has not been setup yet, I do not know how to express warnings...I am using standard print for now.
-            print("Warning: expecting {} anchor points, only {} available.".format(num_anchor, len(non_duplicate_anchor_point_indexes)))
+            print("Warning: expecting {} anchor points, only {} available.".format(num_anchor, len(
+                non_duplicate_anchor_point_indexes)))
 
-        X = X[non_duplicate_anchor_point_indexes,:]
+        X = X[non_duplicate_anchor_point_indexes, :]
 
         scores = self.get_anchor_point_scores(X)
 
-        anchor_points = X[np.argsort(scores)[:min(len(scores),num_anchor)], :]
-
-        return anchor_points
+        anchor_points = X[np.argsort(scores)[:min(len(scores), num_anchor)], :]
+        shift = 1e-15
+        x_opt_neighborhood = np.random.uniform(x_opt - shift, x_opt + shift, (num_anchor, len(x_opt)))
+        return np.vstack((anchor_points, x_opt_neighborhood))
 
 
 class ThompsonSamplingAnchorPointsGenerator(AnchorPointsGenerator):
@@ -76,7 +83,6 @@ class ThompsonSamplingAnchorPointsGenerator(AnchorPointsGenerator):
         self.model = model
 
     def get_anchor_point_scores(self, X):
-
         posterior_means, posterior_stds = self.model.predict(X)
 
         return np.array([np.random.normal(m, s) for m, s in zip(posterior_means, posterior_stds)]).flatten()
@@ -94,8 +100,8 @@ class ObjectiveAnchorPointsGenerator(AnchorPointsGenerator):
         self.objective = objective
 
     def get_anchor_point_scores(self, X):
-
         return self.objective(X).flatten()
+
 
 class RandomAnchorPointsGenerator(AnchorPointsGenerator):
 
@@ -108,5 +114,4 @@ class RandomAnchorPointsGenerator(AnchorPointsGenerator):
         super(RandomAnchorPointsGenerator, self).__init__(space, design_type, num_samples)
 
     def get_anchor_point_scores(self, X):
-
         return range(X.shape[0])

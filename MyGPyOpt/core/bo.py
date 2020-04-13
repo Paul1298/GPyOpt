@@ -12,6 +12,7 @@ from ..core.task.cost import CostModel
 from ..optimization.acquisition_optimizer import ContextManager
 from ..util.duplicate_manager import DuplicateManager
 from ..util.general import best_value, normalize
+from ..core.evaluators.sequential import Sequential
 
 try:
     from ..plotting.plots_bo import plot_acquisition, plot_convergence
@@ -234,9 +235,9 @@ class BO(object):
         else:
             duplicate_manager = None
 
-        ### We zip the value in case there are categorical variables
+        x_opt = self.X[np.argmin(self.Y), :]
         return self.space.zip_inputs(self.evaluator.compute_batch(duplicate_manager=duplicate_manager,
-                                                                  context_manager=self.acquisition.optimizer.context_manager))
+                                                                  context_manager=self.acquisition.optimizer.context_manager, x_opt=x_opt))
 
     def _update_model(self, normalization_type='stats'):
         """
