@@ -65,9 +65,11 @@ class AnchorPointsGenerator(object):
         scores = self.get_anchor_point_scores(X)
 
         anchor_points = X[np.argsort(scores)[:min(len(scores), num_anchor)], :]
-        shift = 1e-15
-        x_opt_neighborhood = np.random.uniform(x_opt - shift, x_opt + shift, (num_anchor, len(x_opt)))
-        return np.vstack((anchor_points, x_opt_neighborhood))
+        if x_opt is not None:
+            shift = 1e-5
+            x_opt_neighborhood = np.random.uniform(x_opt - shift, x_opt + shift)
+            anchor_points = np.vstack((anchor_points, x_opt_neighborhood))
+        return anchor_points
 
 
 class ThompsonSamplingAnchorPointsGenerator(AnchorPointsGenerator):

@@ -1,11 +1,10 @@
 # Copyright (c) 2016, the MyGPyOpt Authors
 # Licensed under the BSD 3-clause license (see LICENSE.txt)
 
-from .optimizer import OptLbfgs, OptDirect, OptCma, apply_optimizer, choose_optimizer
-from .anchor_points_generator import ObjectiveAnchorPointsGenerator, ThompsonSamplingAnchorPointsGenerator
-from ..core.task.space import Design_space
 import numpy as np
 
+from .anchor_points_generator import ObjectiveAnchorPointsGenerator, ThompsonSamplingAnchorPointsGenerator
+from .optimizer import apply_optimizer, choose_optimizer
 
 max_objective_anchor_points_logic = "max_objective"
 thompson_sampling_anchor_points_logic = "thompson_sampling"
@@ -26,9 +25,10 @@ class AcquisitionOptimizer(object):
 
     def __init__(self, space, optimizer='lbfgs', **kwargs):
 
-        self.space              = space
-        self.optimizer_name     = optimizer
-        self.kwargs             = kwargs
+        self.space = space
+        self.optimizer_name = optimizer
+        self.kwargs = kwargs
+        self.spec_win_cnt = 0
 
         ### -- save extra options than can be passed to the optimizer
         if 'model' in self.kwargs:
@@ -42,7 +42,6 @@ class AcquisitionOptimizer(object):
 
         ## -- Context handler: takes
         self.context_manager = ContextManager(space)
-
 
     def optimize(self, f=None, df=None, f_df=None, duplicate_manager=None, x_opt=None):
         """
@@ -66,14 +65,31 @@ class AcquisitionOptimizer(object):
         elif self.type_anchor_points_logic == thompson_sampling_anchor_points_logic:
             anchor_points_generator = ThompsonSamplingAnchorPointsGenerator(self.space, sobol_design_type, self.model)
 
-        ## -- Select the anchor points (with context)
-        anchor_points = anchor_points_generator.get(duplicate_manager=duplicate_manager, context_manager=self.context_manager, x_opt=x_opt)
+        # -- Select the anchor points (with context)
+        np_prec = 5
+        anchor_points = anchor_points_generator.get(duplicate_manager=duplicate_manager,
+                                                    context_manager=self.context_manager, x_opt=x_opt)
+        # print('anc_pts', np.array2string(anchor_points, precision=np_prec, separator=', ', max_line_width=np.inf), sep='\n')
 
-        ## --- Applying local optimizers at the anchor points and update bounds of the optimizer (according to the context)
-        optimized_points = [apply_optimizer(self.optimizer, a, f=f, df=None, f_df=f_df, duplicate_manager=duplicate_manager, context_manager=self.context_manager, space = self.space) for a in anchor_points]
-        x_min, fx_min = min(optimized_points, key=lambda t:t[1])
+        #  --- Applying local optimizers at the anchor points and update bounds of the optimizer (according to the
+        # context)
+        optimized_points = [
+            apply_optimizer(self.optimizer, a, f=f, df=None, f_df=f_df, duplicate_manager=duplicate_manager,
+                            context_manager=self.context_manager, space=self.space) for a in anchor_points]
+        # print('x_opt_pts', np.array2string(np.vstack([o[0] for o in optimized_points]), precision=np_prec, separator=', ',
+        #                                    max_line_width=np.inf), sep='\n')
+        # print('fx_opt_pts',
+        #       np.array2string(np.vstack([o[1] for o in optimized_points]), separator=', ', max_line_width=np.inf),
+        #       sep='\n')
+        min_idx = np.argmin(np.vstack([o[1] for o in optimized_points]).flatten())
+        num_anchors = 5
+        if min_idx >= num_anchors:
+            self.spec_win_cnt += 1
+            print('specified anchors win', self.spec_win_cnt)
 
-        #x_min, fx_min = min([apply_optimizer(self.optimizer, a, f=f, df=None, f_df=f_df, duplicate_manager=duplicate_manager, context_manager=self.context_manager, space = self.space) for a in anchor_points], key=lambda t:t[1])
+        x_min, fx_min = optimized_points[min_idx]
+
+        # x_min, fx_min = min([apply_optimizer(self.optimizer, a, f=f, df=None, f_df=f_df, duplicate_manager=duplicate_manager, context_manager=self.context_manager, space = self.space) for a in anchor_points], key=lambda t:t[1])
 
         return x_min, fx_min
 
@@ -85,16 +101,16 @@ class ContextManager(object):
     :param context: dictionary of variables and their contex values
     """
 
-    def __init__ (self, space, context = None):
-        self.space              = space
-        self.all_index          = list(range(space.model_dimensionality))
-        self.all_index_obj      = list(range(len(self.space.config_space_expanded)))
-        self.context_index      = []
-        self.context_value      = []
-        self.context_index_obj  = []
-        self.nocontext_index_obj= self.all_index_obj
-        self.noncontext_bounds  = self.space.get_bounds()[:]
-        self.noncontext_index   = self.all_index[:]
+    def __init__(self, space, context=None):
+        self.space = space
+        self.all_index = list(range(space.model_dimensionality))
+        self.all_index_obj = list(range(len(self.space.config_space_expanded)))
+        self.context_index = []
+        self.context_value = []
+        self.context_index_obj = []
+        self.nocontext_index_obj = self.all_index_obj
+        self.noncontext_bounds = self.space.get_bounds()[:]
+        self.noncontext_index = self.all_index[:]
 
         if context is not None:
 
@@ -107,20 +123,18 @@ class ContextManager(object):
 
             ## --- Get bounds and index for non context
             self.noncontext_index = [idx for idx in self.all_index if idx not in self.context_index]
-            self.noncontext_bounds = [self.noncontext_bounds[idx] for idx in  self.noncontext_index]
+            self.noncontext_bounds = [self.noncontext_bounds[idx] for idx in self.noncontext_index]
 
             ## update non context index in objective
             self.nocontext_index_obj = [idx for idx in self.all_index_obj if idx not in self.context_index_obj]
 
-
-
-    def _expand_vector(self,x):
+    def _expand_vector(self, x):
         '''
         Takes a value x in the subspace of not fixed dimensions and expands it with the values of the fixed ones.
         :param x: input vector to be expanded by adding the context values
         '''
         x = np.atleast_2d(x)
-        x_expanded = np.zeros((x.shape[0],self.space.model_dimensionality))
-        x_expanded[:,np.array(self.noncontext_index).astype(int)]  = x
-        x_expanded[:,np.array(self.context_index).astype(int)]  = self.context_value
+        x_expanded = np.zeros((x.shape[0], self.space.model_dimensionality))
+        x_expanded[:, np.array(self.noncontext_index).astype(int)] = x
+        x_expanded[:, np.array(self.context_index).astype(int)] = self.context_value
         return x_expanded

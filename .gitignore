@@ -54,3 +54,4 @@ docs/_build
 
 # Virtual environments
 venv/
+/.idea/

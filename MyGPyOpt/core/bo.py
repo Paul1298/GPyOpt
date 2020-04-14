@@ -12,7 +12,6 @@ from ..core.task.cost import CostModel
 from ..optimization.acquisition_optimizer import ContextManager
 from ..util.duplicate_manager import DuplicateManager
 from ..util.general import best_value, normalize
-from ..core.evaluators.sequential import Sequential
 
 try:
     from ..plotting.plots_bo import plot_acquisition, plot_convergence
@@ -37,7 +36,7 @@ class BO(object):
     """
 
     def __init__(self, model, space, objective, acquisition, evaluator, X_init, Y_init=None, cost=None,
-                 normalize_Y=True, model_update_interval=1, de_duplication=False):
+                 normalize_Y=True, model_update_interval=1, de_duplication=False, spec_anchors_always=True, window_step=0):
         self.model = model
         self.space = space
         self.objective = objective
@@ -53,6 +52,13 @@ class BO(object):
         self.model_parameters_iterations = None
         self.context = None
         self.num_acquisitions = 0
+        self.spec_anch_indices = None
+        self.saved_steps = 0
+        self.cur_steps = 0
+        self.start_window = 0
+        self.limit_steps = 5
+        self.spec_anchors_always = spec_anchors_always
+        self.window_step = window_step
 
     def suggest_next_locations(self, context=None, pending_X=None, ignored_X=None):
         """
@@ -157,6 +163,7 @@ class BO(object):
             self.cum_time = time.time() - self.time_zero
             self.num_acquisitions += 1
 
+            # TODO specify it with stdout log file
             if verbosity:
                 print("num acquisition: {}, time elapsed: {:.2f}s".format(
                     self.num_acquisitions, self.cum_time))
@@ -235,9 +242,29 @@ class BO(object):
         else:
             duplicate_manager = None
 
-        x_opt = self.X[np.argmin(self.Y), :]
+        # TODO specify it
+        num_specified_anchors = 3
+        # if self.cur_steps >= self.limit_steps:
+        #     self.start_window += self.window_step
+        #     print('start_window moved to', self.start_window)
+        spec_anch_indices = np.argsort(self.Y.flatten())[self.start_window:(self.start_window + num_specified_anchors)]
+        if self.spec_anch_indices is None or self.spec_anchors_always or np.any(spec_anch_indices != self.spec_anch_indices):
+            self.cur_steps = 1
+            self.start_window = 0
+
+            self.spec_anch_indices = spec_anch_indices
+            x_opt = self.X[spec_anch_indices, :]
+        else:
+            self.cur_steps += 1
+
+            x_opt = None
+            self.saved_steps += 1
+        #     print('cur_steps', self.cur_steps)
+        #     print('saved_steps', self.saved_steps)
+        # print(self.acquisition.acquisition_function)
         return self.space.zip_inputs(self.evaluator.compute_batch(duplicate_manager=duplicate_manager,
-                                                                  context_manager=self.acquisition.optimizer.context_manager, x_opt=x_opt))
+                                                                  context_manager=self.acquisition.optimizer.context_manager,
+                                                                  x_opt=x_opt))
 
     def _update_model(self, normalization_type='stats'):
         """
