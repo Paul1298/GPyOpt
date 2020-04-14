@@ -84,6 +84,8 @@ class ArgumentsManager(object):
         space = space
 
         kernel = self.kwargs.get('kernel',None)
+        self.kwargs.pop('kernel', None)
+
         ARD = self.kwargs.get('ARD',False)
         verbosity_model = self.kwargs.get('verbosity_model',False)
         noise_var = self.kwargs.get('noise_var',None)
