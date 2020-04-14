@@ -2,24 +2,20 @@
 # Licensed under the BSD 3-clause license (see LICENSE.txt)
 
 
-from ..acquisitions import AcquisitionEI, AcquisitionMPI, AcquisitionLCB, AcquisitionEI_MCMC, AcquisitionMPI_MCMC, AcquisitionLCB_MCMC, AcquisitionLP, AcquisitionEntropySearch
+import warnings
+
+import MyGPyOpt
 from ..core.bo import BO
 from ..core.errors import InvalidConfigError
-from ..core.task.space import Design_space, bounds_to_space
-from ..core.task.objective import SingleObjective
 from ..core.task.cost import CostModel
+from ..core.task.objective import SingleObjective
+from ..core.task.space import Design_space
 from ..experiment_design import initial_design
-from ..util.arguments_manager import ArgumentsManager
-from ..core.evaluators import Sequential, RandomBatch, LocalPenalization, ThompsonBatch
-from ..models.gpmodel import GPModel, GPModel_MCMC
-from ..models.rfmodel import RFModel
-from ..models.warpedgpmodel import WarpedGPModel
-from ..models.input_warped_gpmodel import InputWarpedGPModel
 from ..optimization.acquisition_optimizer import AcquisitionOptimizer
-import MyGPyOpt
+from ..util.arguments_manager import ArgumentsManager
 
-import warnings
 warnings.filterwarnings("ignore")
+
 
 class BayesianOptimization(BO):
     """
@@ -73,10 +69,12 @@ class BayesianOptimization(BO):
                 model_optimize_restarts, sparseGP, num_inducing and normalize can still be used but will be deprecated in the next version.
     """
 
-    def __init__(self, f, domain = None, constraints = None, cost_withGradients = None, model_type = 'GP', X = None, Y = None,
-    	initial_design_numdata = 5, initial_design_type='random', acquisition_type ='EI', normalize_Y = True,
-        exact_feval = False, acquisition_optimizer_type = 'lbfgs', model_update_interval=1, evaluator_type = 'sequential',
-        batch_size = 1, num_cores = 1, verbosity=False, verbosity_model = False, maximize=False, de_duplication=False, **kwargs):
+    def __init__(self, f, domain=None, constraints=None, cost_withGradients=None, model_type='GP', X=None, Y=None,
+                 initial_design_numdata=5, initial_design_type='random', acquisition_type='EI', normalize_Y=True,
+                 exact_feval=False, acquisition_optimizer_type='lbfgs', model_update_interval=1,
+                 evaluator_type='sequential',
+                 batch_size=1, num_cores=1, verbosity=False, verbosity_model=False, maximize=False,
+                 de_duplication=False, **kwargs):
         self.modular_optimization = False
         self.initial_iter = True
         self.verbosity = verbosity
@@ -103,7 +101,7 @@ class BayesianOptimization(BO):
         self.num_cores = num_cores
         if f is not None:
             self.f = self._sign(f)
-            self.objective = SingleObjective(self.f, self.batch_size,self.objective_name)
+            self.objective = SingleObjective(self.f, self.batch_size, self.objective_name)
         else:
             self.f = None
             self.objective = None
@@ -114,7 +112,7 @@ class BayesianOptimization(BO):
         # --- CHOOSE initial design
         self.X = X
         self.Y = Y
-        self.initial_design_type  = initial_design_type
+        self.initial_design_type = initial_design_type
         self.initial_design_numdata = initial_design_numdata
         self._init_design_chooser()
 
@@ -136,9 +134,10 @@ class BayesianOptimization(BO):
         # --- CHOOSE the acquisition optimizer_type
 
         # This states how the discrete variables are handled (exact search or rounding)
-        kwargs.update({ 'model' : self.model })
+        kwargs.update({'model': self.model})
         self.acquisition_optimizer_type = acquisition_optimizer_type
-        self.acquisition_optimizer = AcquisitionOptimizer(self.space, self.acquisition_optimizer_type, **kwargs)  ## more arguments may come here
+        self.acquisition_optimizer = AcquisitionOptimizer(self.space, self.acquisition_optimizer_type,
+                                                          **kwargs)  ## more arguments may come here
 
         # --- CHOOSE acquisition function. If an instance of an acquisition is passed (possibly user defined), it is used.
         self.acquisition_type = acquisition_type
@@ -153,32 +152,34 @@ class BayesianOptimization(BO):
         else:
             self.acquisition = self.acquisition = self._acquisition_chooser()
 
-
         # --- CHOOSE evaluator method
         self.evaluator_type = evaluator_type
         self.evaluator = self._evaluator_chooser()
 
         # --- Create optimization space
-        super(BayesianOptimization,self).__init__(  model                  = self.model,
-                                                    space                  = self.space,
-                                                    objective              = self.objective,
-                                                    acquisition            = self.acquisition,
-                                                    evaluator              = self.evaluator,
-                                                    X_init                 = self.X,
-                                                    Y_init                 = self.Y,
-                                                    cost                   = self.cost,
-                                                    normalize_Y            = self.normalize_Y,
-                                                    model_update_interval  = self.model_update_interval,
-                                                    de_duplication         = self.de_duplication)
+        super(BayesianOptimization, self).__init__(space=self.space,
+                                                   objective=self.objective,
+                                                   acquisition=self.acquisition,
+                                                   evaluator=self.evaluator,
+                                                   X_init=self.X,
+                                                   Y_init=self.Y,
+                                                   cost=self.cost,
+                                                   normalize_Y=self.normalize_Y,
+                                                   model_update_interval=self.model_update_interval,
+                                                   de_duplication=self.de_duplication,
+                                                   **kwargs)
 
     def _model_chooser(self):
-        return self.problem_config.model_creator(self.model_type, self.exact_feval,self.space)
+        return self.problem_config.model_creator(self.model_type, self.exact_feval, self.space)
 
     def _acquisition_chooser(self):
-        return self.problem_config.acquisition_creator(self.acquisition_type, self.model, self.space, self.acquisition_optimizer, self.cost.cost_withGradients)
+        return self.problem_config.acquisition_creator(self.acquisition_type, self.model, self.space,
+                                                       self.acquisition_optimizer, self.cost.cost_withGradients)
 
     def _evaluator_chooser(self):
-        return self.problem_config.evaluator_creator(self.evaluator_type, self.acquisition, self.batch_size, self.model_type, self.model, self.space, self.acquisition_optimizer)
+        return self.problem_config.evaluator_creator(self.evaluator_type, self.acquisition, self.batch_size,
+                                                     self.model_type, self.model, self.space,
+                                                     self.acquisition_optimizer)
 
     def _init_design_chooser(self):
         """
@@ -187,7 +188,8 @@ class BayesianOptimization(BO):
 
         # If objective function was not provided, we require some initial sample data
         if self.f is None and (self.X is None or self.Y is None):
-            raise InvalidConfigError("Initial data for both X and Y is required when objective function is not provided")
+            raise InvalidConfigError(
+                "Initial data for both X and Y is required when objective function is not provided")
 
         # Case 1:
         if self.X is None:
@@ -197,8 +199,9 @@ class BayesianOptimization(BO):
         elif self.X is not None and self.Y is None:
             self.Y, _ = self.objective.evaluate(self.X)
 
-    def _sign(self,f):
-         if self.maximize:
-             f_copy = f
-             def f(x):return -f_copy(x)
-         return f
+    def _sign(self, f):
+        if self.maximize:
+            f_copy = f
+
+            def f(x): return -f_copy(x)
+        return f
